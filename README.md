@@ -1,55 +1,66 @@
-# jobfinder-app
-Job Finder Web App is a full-stack project built with React (frontend) and Flask (backend). It showcases DevOps practices with Docker containerization, GitHub Actions CI/CD, and AWS ECS deployment. Designed for scalable, cloud-ready architecture using modern CloudOps workflows.
-![AWS](https://img.shields.io/badge/AWS-ECS%20%7C%20ECR-orange?logo=amazonaws)
-![Docker](https://img.shields.io/badge/Docker-Containerization-blue?logo=docker)
-![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Automation-green?logo=githubactions)
+<h1 align="center">🔍 Job Finder Web App</h1>
 
-# 🔍 Job Finder Web App
-
-A **full-stack Job Search Platform** built with **React (frontend)** and **Flask (backend)** — allowing users to view, search, and filter job listings seamlessly.  
-
-This project showcases **DevOps and CloudOps skills** by using **Docker**, **GitHub Actions CI/CD**, and **AWS ECS (Fargate)** for scalable, production-grade deployment.
+<p align="center">
+  A <b>full-stack Job Search Platform</b> built with <b>React</b> (frontend) and <b>Flask</b> (backend),
+  demonstrating complete <b>DevOps automation</b> using <b>Docker</b>, <b>GitHub Actions</b>, and <b>AWS ECS</b>.
+</p>
 
 ---
 
-## 🚀 Features
+## ✨ Project Overview
 
-- 🧭 Browse and search job listings  
-- 📝 Add and view job details  
-- ⚙️ RESTful API built with Flask  
-- 🐳 Containerized using Docker  
-- ☁️ Deployed on AWS ECS (Fargate)  
-- 🔄 Automated build and deploy via GitHub Actions  
-- 💾 Persistent storage with SQLite (local) or PostgreSQL (AWS RDS)
+**Job Finder Web App** allows users to browse, search, and view job listings in a clean, responsive UI.  
+It’s designed as a **DevOps + CloudOps showcase project**, combining containerization, CI/CD, and AWS deployment to demonstrate real-world production architecture.
+
+---
+
+## 🧠 Features
+
+- 🔎 Browse & search job listings  
+- 📝 View detailed job information  
+- 🐳 Dockerized frontend & backend services  
+- ⚙️ CI/CD automated with GitHub Actions  
+- ☁️ Deployment on AWS ECS (Fargate)  
+- 🛢️ Persistent data with AWS RDS (PostgreSQL)  
+- 🔐 Secrets & credentials via AWS Secrets Manager  
+- 📊 Monitoring via Amazon CloudWatch  
 
 ---
 
 ## 🧰 Tech Stack
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/react/react-original-wordmark.svg" alt="React" width="60" height="60"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original-wordmark.svg" alt="Python" width="60" height="60"/>
+  <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/docker/docker-original-wordmark.svg" alt="Docker" width="60" height="60"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/githubactions/githubactions-original.svg" alt="GitHub Actions" width="60" height="60"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg" alt="AWS" width="80" height="60"/>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original-wordmark.svg" alt="PostgreSQL" width="60" height="60"/>
+</p>
+
 | Layer | Technology |
 |-------|-------------|
 | **Frontend** | React, Tailwind CSS |
 | **Backend** | Flask (Python), Flask-CORS |
-| **Database** | SQLite (local) / PostgreSQL (AWS RDS) |
+| **Database** | PostgreSQL (AWS RDS) |
+| **Containerization** | Docker |
 | **CI/CD** | GitHub Actions |
 | **Deployment** | AWS ECS (Fargate), ECR |
-| **Monitoring** | Amazon CloudWatch |
-| **Secrets** | AWS Secrets Manager |
+| **Monitoring** | CloudWatch |
+| **Secrets Management** | AWS Secrets Manager |
 
 ---
 
 ## 🏗️ Architecture Overview
 
 **AWS Components Used:**
-- ECS (Fargate) for container orchestration  
-- ECR for image storage  
-- Application Load Balancer for routing (`/ → frontend`, `/api/* → backend`)  
-- RDS for persistent data  
-- CloudWatch for logs  
-- Secrets Manager for secure credentials  
-- S3 (optional) for static assets  
-- GitHub Actions for CI/CD automation  
-
+- **Amazon ECS (Fargate)** – Runs frontend & backend containers  
+- **Amazon ECR** – Stores Docker images  
+- **Application Load Balancer (ALB)** – Routes `/ → frontend`, `/api/* → backend`  
+- **Amazon RDS (PostgreSQL)** – Persistent job storage  
+- **AWS Secrets Manager** – Secures DB credentials  
+- **Amazon CloudWatch** – Logs & monitoring  
+- **GitHub Actions** – Automates build, push, deploy
 📊 **Architecture Diagram:**  
   
 
