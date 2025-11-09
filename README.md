@@ -61,10 +61,11 @@ It’s designed as a **DevOps + CloudOps showcase project**, combining container
 - **AWS Secrets Manager** – Secures DB credentials  
 - **Amazon CloudWatch** – Logs & monitoring  
 - **GitHub Actions** – Automates build, push, deploy
+
+  
 📊 **Architecture Diagram:**  
   
-
----<img width="1114" height="673" alt="Screenshot 2025-10-11 084639" src="https://github.com/user-attachments/assets/297ba5b8-7c62-4971-9d79-ae376e522b70" />
+<img width="1114" height="673" alt="Screenshot 2025-10-11 084639" src="https://github.com/user-attachments/assets/297ba5b8-7c62-4971-9d79-ae376e522b70" />
 
 
 ## ⚙️ Local Setup
