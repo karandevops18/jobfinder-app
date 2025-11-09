@@ -78,7 +78,7 @@ It’s designed as a **DevOps + CloudOps showcase project**, combining container
 
 ### 1️⃣ Clone the repository
 ```bash
-git clone https://github.com/<your-username>/job-finder-webapp.git
+git clone https://github.com/karandevops18/jobfinder-app.git
 cd job-finder-webapp
 
 2️⃣ Run Backend
