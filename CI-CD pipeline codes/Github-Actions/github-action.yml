@@ -1,0 +1,146 @@
+name: Build, Push to ECR and Deploy to ECS
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  FE_REPO: ${{ secrets.ECR_FE_REPO }}
+  BE_REPO: ${{ secrets.ECR_BE_REPO }}
+  CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  SERVICE_FE: ${{ secrets.ECS_SERVICE_FRONTEND }}
+  SERVICE_BE: ${{ secrets.ECS_SERVICE_BACKEND }}
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_push:
+    name: Build & Push Docker images to ECR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set image variables
+        run: |
+          echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-8)" >> $GITHUB_ENV
+          echo "FE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FE_REPO}" >> $GITHUB_ENV
+          echo "BE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BE_REPO}" >> $GITHUB_ENV
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t $FE_IMAGE:latest -t $FE_IMAGE:${SHORT_SHA} ./frontend
+          docker push $FE_IMAGE:latest
+          docker push $FE_IMAGE:${SHORT_SHA}
+
+      - name: Build and push backend image
+        run: |
+          docker build -t $BE_IMAGE:latest -t $BE_IMAGE:${SHORT_SHA} ./backend
+          docker push $BE_IMAGE:latest
+          docker push $BE_IMAGE:${SHORT_SHA}
+
+      - name: Confirm pushed images
+        run: |
+          echo "Frontend images pushed: $FE_IMAGE:latest and $FE_IMAGE:${SHORT_SHA}"
+          echo "Backend images pushed:  $BE_IMAGE:latest and $BE_IMAGE:${SHORT_SHA}"
+
+  deploy:
+    name: Deploy to ECS (register task def + update service)
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install jq (for JSON edit)
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Prepare image variables
+        run: |
+          echo "FE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FE_REPO}:${SHORT_SHA}" >> $GITHUB_ENV
+          echo "BE_IMAGE=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BE_REPO}:${SHORT_SHA}" >> $GITHUB_ENV
+          echo "FE_IMAGE_LATEST=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FE_REPO}:latest" >> $GITHUB_ENV
+          echo "BE_IMAGE_LATEST=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${BE_REPO}:latest" >> $GITHUB_ENV
+
+      - name: Update frontend task definition & service
+        id: deploy_frontend
+        run: |
+          set -e
+          # Get current task definition ARN for the frontend service
+          echo "Fetching current task definition for service $SERVICE_FE in cluster $CLUSTER"
+          TASK_DEF_ARN=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE_FE" --query 'services[0].taskDefinition' --output text)
+          echo "Current frontend task definition ARN: $TASK_DEF_ARN"
+
+          # Download task definition JSON
+          aws ecs describe-task-definition --task-definition "$TASK_DEF_ARN" > taskdef-fe.json
+
+          # Replace image for container named "frontend"
+          jq --arg img "$FE_IMAGE" '.taskDefinition.containerDefinitions |= map(if .name == "frontend" then .image = $img else . end)' taskdef-fe.json > taskdef-fe-new.json
+
+          # Create minimal register JSON (take required top-level fields)
+          jq '.taskDefinition |= { family: .family, networkMode: .networkMode, cpu: .cpu, memory: .memory, executionRoleArn: .executionRoleArn, taskRoleArn: .taskRoleArn, requiresCompatibilities: .requiresCompatibilities, containerDefinitions: .containerDefinitions } | .taskDefinition' taskdef-fe-new.json > fe-register.json
+
+          # Register new task definition
+          NEW_FE_TASKDEF_ARN=$(aws ecs register-task-definition --cli-input-json file://fe-register.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Registered new frontend taskdef: $NEW_FE_TASKDEF_ARN"
+          echo "FE_TASKDEF_ARN=$NEW_FE_TASKDEF_ARN" >> $GITHUB_ENV
+
+          # Update service to use new task definition
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE_FE" --task-definition "$NEW_FE_TASKDEF_ARN" --force-new-deployment
+          echo "Frontend service updated."
+
+      - name: Update backend task definition & service
+        id: deploy_backend
+        run: |
+          set -e
+          # Get current task definition ARN for the backend service
+          echo "Fetching current task definition for service $SERVICE_BE in cluster $CLUSTER"
+          TASK_DEF_ARN=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE_BE" --query 'services[0].taskDefinition' --output text)
+          echo "Current backend task definition ARN: $TASK_DEF_ARN"
+
+          # Download task definition JSON
+          aws ecs describe-task-definition --task-definition "$TASK_DEF_ARN" > taskdef-be.json
+
+          # Replace image for container named "backend"
+          jq --arg img "$BE_IMAGE" '.taskDefinition.containerDefinitions |= map(if .name == "backend" then .image = $img else . end)' taskdef-be.json > taskdef-be-new.json
+
+          # Create minimal register JSON
+          jq '.taskDefinition |= { family: .family, networkMode: .networkMode, cpu: .cpu, memory: .memory, executionRoleArn: .executionRoleArn, taskRoleArn: .taskRoleArn, requiresCompatibilities: .requiresCompatibilities, containerDefinitions: .containerDefinitions } | .taskDefinition' taskdef-be-new.json > be-register.json
+
+          # Register new task definition
+          NEW_BE_TASKDEF_ARN=$(aws ecs register-task-definition --cli-input-json file://be-register.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "Registered new backend taskdef: $NEW_BE_TASKDEF_ARN"
+          echo "BE_TASKDEF_ARN=$NEW_BE_TASKDEF_ARN" >> $GITHUB_ENV
+
+          # Update service to use new task definition
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE_BE" --task-definition "$NEW_BE_TASKDEF_ARN" --force-new-deployment
+          echo "Backend service updated."
+
+      - name: Wait for services to stabilize
+        run: |
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE_FE" "$SERVICE_BE"
+          echo "ECS services are stable."
+
+      - name: Print deployment summary
+        run: |
+          echo "Deployment completed."
+          echo "Frontend image: $FE_IMAGE"
+          echo "Backend  image: $BE_IMAGE"
